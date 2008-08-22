@@ -5,7 +5,7 @@ use strict;
 
 =head1 NAME
 
-File::Builtin::Sugar - The great new File::Builtin::Sugar!
+File::Builtin::Sugar -
 
 =head1 VERSION
 
@@ -15,37 +15,138 @@ Version 0.01
 
 our $VERSION = '0.01';
 
+#my %CORE = (
+#    rename => sub { return CORE::rename $_[0], $_[1] },
+#    symlink => sub { return CORE::symlink $_[0], $_[1] },
+#    link => sub { return CORE::link $_[0], $_[1] },
+#);
 
-=head1 SYNOPSIS
+# TODO Checkout File::Utils
 
-Quick summary of what the module does.
+use vars qw/@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS/;
 
-Perhaps a little code snippet.
+@ISA = qw/Exporter/;
+#@EXPORT_OK = map { ($_, "${_}z") } keys %CORE;
+@EXPORT_OK = qw/rename symlink link/;
+$EXPORT_TAGS{all} = \@EXPORT_OK;
 
-    use File::Builtin::Sugar;
+#use Carp::Clan qw/^(?:Carp::Clan::__ANON__()|File::Builtin::Sugar|Context::Preserve)/;
+use Carp::Clan;
+use Exporter;
+use Context::Preserve;
+use Path::Class;
 
-    my $foo = File::Builtin::Sugar->new();
-    ...
+sub _meld($$) {
+    my $base = shift;
+    my $default = shift;
 
-=head1 EXPORT
+    my %meld = %$base;
+    for (keys %$default) {
+        $meld{$_} = $default->{$_} unless exists $meld{$_};
+    }
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 FUNCTIONS
-
-=head2 function1
-
-=cut
-
-sub function1 {
+    return %meld;
 }
 
-=head2 function2
+sub _handle_make_path($$) {
+    my ($want, $to) = @_;
 
-=cut
+    if ($want->{make_path}) {
+        my $path = (file $to)->parent;
+        $path->mkpath unless -d $path;
+    }
+}
 
-sub function2 {
+sub symlink {
+    my %want = _meld((ref $_[0] eq 'HASH' ? shift : {}), {
+        core => 0,
+        relative => 0,
+        skip_existing => 1,
+        overwrite_existing => 0,
+        make_path => 1,
+        verbose => 1,
+    });
+
+    my ($from, $to) = @_;
+    
+    if ($want{skip_existing}) {
+        return if $want{skip_existing} eq 2 && -e $to;
+        return if -l $to;
+    }
+
+    _handle_make_path \%want, $to;
+
+    if ($want{relative}) {
+        # TODO Check that from/to is absolute?
+        my $to_parent = (file $to)->parent;
+        $from = $from->relative($to_parent);
+    }
+
+    if ($want{verbose}) {
+        local $! = undef;
+        my $result = CORE::symlink $from, $to;
+        carp "symlink($from, $to): $!" if $! or ! $result;
+        return $result;
+    }
+    else {
+        return CORE::symlink $from, $to;
+    }
+}
+
+sub link {
+    my %want = _meld((ref $_[0] eq 'HASH' ? shift : {}), {
+        core => 0,
+        skip_existing => 1,
+        overwrite_existing => 0,
+        make_path => 1,
+        verbose => 1,
+    });
+
+    my ($from, $to) = @_;
+    
+    if ($want{skip_existing}) {
+        return if -l $to;
+    }
+
+    _handle_make_path \%want, $to;
+
+    if ($want{verbose}) {
+        local $! = undef;
+        my $result = CORE::link $from, $to;
+        carp "link($from, $to): $!" if $! or ! $result;
+        return $result;
+    }
+    else {
+        return CORE::link $from, $to;
+    }
+}
+
+sub rename {
+    my %want = _meld((ref $_[0] eq 'HASH' ? shift : {}), {
+        core => 0,
+        skip_existing => 1,
+        overwrite_existing => 0,
+        make_path => 1,
+        verbose => 1,
+    });
+
+    my ($from, $to) = @_;
+    
+    if ($want{skip_existing}) {
+        return if -l $to;
+    }
+
+    _handle_make_path \%want, $to;
+
+    if ($want{verbose}) {
+        local $! = undef;
+        my $result = CORE::rename $from, $to;
+        carp "rename($from, $to): $!" if $! or ! $result;
+        return $result;
+    }
+    else {
+        return CORE::rename $from, $to;
+    }
 }
 
 =head1 AUTHOR
@@ -105,3 +206,34 @@ under the same terms as Perl itself.
 =cut
 
 1; # End of File::Builtin::Sugar
+
+__END__
+
+for my $function (qw/rename link/) {
+    no strict 'refs';
+    my $CORE_function = $CORE{$function};
+    *$function = sub {
+        my ($from, $to) = @_;
+
+        local $! = undef;
+        return preserve_context {
+            return $CORE_function->($from, $to);
+        }
+        after => sub { $_[0] or ! $! or carp "$function($from, $to): $!" }
+        ;
+    };
+
+    my $functionz = "${function}z";
+    *$functionz = sub {
+        my ($from, $to) = @_;
+
+        return if -e $to;
+
+        my $dir = (file $to)->parent;
+        $dir->mkpath unless -d $dir;
+
+
+        *$function->($from, $to);
+    };
+}
+
