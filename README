@@ -1,0 +1,42 @@
+NAME
+    File::Builtin::Sugar -
+
+VERSION
+    Version 0.01
+
+AUTHOR
+    Robert Krimen, "<rkrimen at cpan.org>"
+
+BUGS
+    Please report any bugs or feature requests to "bug-file-builtin-sugar at
+    rt.cpan.org", or through the web interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=File-Builtin-Sugar>. I
+    will be notified, and then you'll automatically be notified of progress
+    on your bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc File::Builtin::Sugar
+
+    You can also look for information at:
+
+    * RT: CPAN's request tracker
+        <http://rt.cpan.org/NoAuth/Bugs.html?Dist=File-Builtin-Sugar>
+
+    * AnnoCPAN: Annotated CPAN documentation
+        <http://annocpan.org/dist/File-Builtin-Sugar>
+
+    * CPAN Ratings
+        <http://cpanratings.perl.org/d/File-Builtin-Sugar>
+
+    * Search CPAN
+        <http://search.cpan.org/dist/File-Builtin-Sugar>
+
+ACKNOWLEDGEMENTS
+COPYRIGHT & LICENSE
+    Copyright 2008 Robert Krimen, all rights reserved.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
